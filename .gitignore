@@ -3,3 +3,7 @@ Python/project/
 
 
 Python/__pycache__/
+
+*.pred
+
+*.script
