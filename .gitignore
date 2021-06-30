@@ -7,3 +7,5 @@ Python/__pycache__/
 *.pred
 
 *.script
+
+Python/data/general_210629_1621.script.out
