@@ -411,16 +411,8 @@ def init_dict(features):
 def init_times(features, t):
     times = dict()
     for f in features:
-        times[f] = [0,t]
+        times[f] = [[0,t], [0,t], [0,t], [0,t]]
     return times
-
-def finalise_values(values_df):
-    T = []
-    for i in range(1, len(values_df['time'])):
-        T.append(values_df['time'][i] - values_df['time'][i-1])
-    values_df = values_df.drop(0, axis=0)
-    values_df['T'] = T
-    return values_df
 
 def add_line(values, time, pg_name):
     values['time'].append(time)
@@ -429,18 +421,29 @@ def add_line(values, time, pg_name):
     for f in features:
         values[f].append(0)
 
-def fill_line(values, times, pg_name, ev_name, ev_time, ev_count):
-    # if len(values['time']) == 0 or ev_time != values['time'][-1]:
-    #     add_line(values, ev_time, pg_name)
+def fill_line(values, times, pg_name, ev_name, ev_time, ev_count, cpu):
     if ev_name in features:
         add_line(values, ev_time, pg_name)
         values[ev_name][-1] = ev_count
-        if ev_time != times[ev_name][1]:
-            values['T'][-1] = ev_time - times[ev_name][1]
-            times[ev_name][0] = times[ev_name][1]
-            times[ev_name][1] = ev_time
+        if ev_time != times[ev_name][cpu][1]:
+            values['T'][-1] = ev_time - times[ev_name][cpu][1]
+            times[ev_name][cpu][0] = times[ev_name][cpu][1]
+            times[ev_name][cpu][1] = ev_time
         else:
-            values['T'][-1] = ev_time - times[ev_name][0]
+            values['T'][-1] = ev_time - times[ev_name][cpu][0]
+
+def fill_line_sample(values, times, sample):
+    if sample['event'] in features:
+        add_line(values, sample['time'], sample['program'])
+        values[sample['event']][-1] = sample['count']
+        if sample['time'] != times[sample['event']][sample['cpu']][1]:
+            values['T'][-1] = sample['time'] - times[sample['event']][sample['cpu']][1]
+            times[sample['event']][sample['cpu']][0] = times[sample['event']][sample['cpu']][1]
+            times[sample['event']][sample['cpu']][1] = sample['time']
+        else:
+            values['T'][-1] = sample['time'] - times[sample['event']][sample['cpu']][0]
+
+
 
 def create_dataframe(samples):
     values = init_dict(features)
@@ -455,39 +458,9 @@ def create_dataframe(samples):
         if s['time'] == T:
             continue
 
-        fill_line(values, times, s['program'], s['event'], s['time'] - base_time, s['count'])
+        fill_line_sample(values, times, s)
 
     return pd.DataFrame(values)
-
-def parse_file(filename):
-    file = open(filename)
-    p = re.compile(r"([a-zA-Z0-9.-_]+)\s+[0-9]+\s([0-9]+\.[0-9]+):\s+([0-9]+)\s+([a-zA-Z0-9_\-\.]+):")
-
-    values = init_dict(features)
-    times = None
-
-    distinguish_prog = True
-
-    while(line := file.readline()):
-        line = line.replace('\n', '')
-        res = find(line)
-        if res:
-            pg_name = res[0]
-            ev_name = res[3]
-            ev_time = float(res[1])
-            e_count = int(res[2])
-
-            if times == None:
-                times = init_times(features, ev_time)
-                T = ev_time
-
-            if ev_time == T:
-                continue # drop first instance
-
-            fill_line(values, times, pg_name, ev_name, ev_time, e_count)
-
-    df = (pd.DataFrame(values))
-    return df
 
 def read_csv(filename):
     file = open(filename)
@@ -498,12 +471,16 @@ def read_csv(filename):
             res = find(line)
             if res:
                 pg_name = res[0]
-                ev_name = res[3]
-                ev_time = float(res[1])
-                e_count = int(res[2])
+                pid = int(res[1])
+                cpu = int(res[2])
+                ev_time = float(res[3])
+                ev_name = res[5]
+                e_count = int(res[4])
 
                 samples.append({
                     'program': pg_name,
+                    'pid': pid,
+                    'cpu': cpu,
                     'event': ev_name,
                     'time': ev_time,
                     'count': e_count
@@ -511,17 +488,24 @@ def read_csv(filename):
 
     return samples
 
+def retime_samples(samples):
+    base_time = samples[0]['time']
+    for i in range(1, len(samples)):
+        samples[i]['time'] -= base_time
+    return samples
+
 
 def find(line):
-    regex = r"^([a-zA-Z0-9.-_]+)\s+[0-9]+\s+\[[0-9]+\]\s([0-9]+\.[0-9]+):\s+([0-9]+)\s+([a-zA-Z0-9_\-\.]+):"
+    regex = r"^([a-zA-Z0-9.-_]+)\s+([0-9]+)\s+\[([0-9]+)\]\s([0-9]+\.[0-9]+):\s+([0-9]+)\s+([a-zA-Z0-9_\-\.]+):"
     matches = re.finditer(regex, line, re.MULTILINE)
     for matchNum, match in enumerate(matches, start=1):
-        return (match.group(1), match.group(2), match.group(3), match.group(4))
+        return (match.group(1), match.group(2), match.group(3), match.group(4), match.group(5), match.group(6))
     return None
 
 def run(filename, sep, o_filename):
-    samples = read_csv(filename)
+    samples = retime_samples(read_csv(filename))
     df = create_dataframe(samples)
+    print(df)
     df.to_csv(o_filename, sep=sep, index=False)
 
 if __name__ == "__main__":
