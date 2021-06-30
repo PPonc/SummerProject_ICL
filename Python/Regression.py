@@ -407,6 +407,8 @@ features = [
 
 no_plot = False
 no_hist = False
+no_plot_train = False
+no_plot_valid = False
 
 def relu(X):
     return X#np.maximum(0, X)
@@ -479,7 +481,7 @@ def K_fold_cross_val(df, K=10, y_param='power/energy-pkg/'):
     y_pred_test = np.concatenate(y_pred_test)
     y_true_test = np.concatenate(y_true_test)
 
-    if not no_plot:
+    if not no_plot and not no_plot_train:
         sm.qqplot_2samples(y_true_test, y_pred_test, xlabel="True value", ylabel="Predicted value")
         plt.title("QQ-plot 2 samples of validation dataset")
         plt.legend()
@@ -516,7 +518,7 @@ def run(args):
     print("{} Features".format(len(features)))
 
     df = load_dataset(args.train)
-    if not no_plot:
+    if not no_plot and not no_plot_train:
         plot_density(df, y_param, "the training dataset")
         plt.show()
 
@@ -535,7 +537,7 @@ def run(args):
         df_test = load_dataset(args.validation).dropna()
         print("Testing dataset {} x {}".format(df_test.shape[0], df_test.shape[1]))
 
-        if not no_plot:
+        if not no_plot and not no_plot_valid:
             plot_density(df_test, y_param, "the validation dataset")
             plt.show()
         X_test,y_test = split_dataset_Xy(df_test, y_param)
@@ -544,7 +546,7 @@ def run(args):
         print("RMSE train {}".format(np.sqrt(mean_squared_error(y_train, y_pred_train))))
         print("RMSE test {}".format(np.sqrt(mean_squared_error(y_test, y_pred_test))))
 
-        if not no_plot:
+        if not no_plot and not no_plot_valid:
             plt.scatter(y_train, y_pred_train)
             plt.scatter(y_test, y_pred_test)
             plt.xlabel("True value")
@@ -593,6 +595,8 @@ if __name__ == "__main__":
     parser.add_argument('--no-plot', action='store_true')
     parser.add_argument('--no-hist', action='store_true')
     parser.add_argument('--remove-const', action='store_true')
+    parser.add_argument('--no-plot-train', action='store_true')
+    parser.add_argument('--no-plot-valid', action='store_true')
     args = parser.parse_args()
 
     if not args.train:
@@ -601,5 +605,7 @@ if __name__ == "__main__":
 
     no_plot = args.no_plot
     no_hist = args.no_hist
+    no_plot_train = args.no_plot_train
+    no_plot_valid = args.no_plot_valid
 
     run(args)
