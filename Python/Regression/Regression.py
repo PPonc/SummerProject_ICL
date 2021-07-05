@@ -4,10 +4,14 @@ from sklearn.linear_model import LinearRegression
 from sklearn.utils import shuffle
 from sklearn.model_selection import KFold
 from sklearn.metrics import mean_squared_error
+from sklearn.feature_selection import SelectKBest, f_regression, mutual_info_regression
 import parse_csv as myParser
 import matplotlib.pyplot as plt
 import seaborn as sb
 import statsmodels.api as sm
+
+from utils import *
+from KFoldTraining import *
 
 import argparse
 
@@ -410,116 +414,17 @@ no_hist = False
 no_plot_train = False
 no_plot_valid = False
 
-def relu(X):
-    return X#np.maximum(0, X)
-
-def prune_non_significant_features(features, df, t):
-    N_t = t * df.shape[0]
-    new_features = []
-    for f in features:
-        N = (df[f] > 0).sum()
-        if N >= N_t:
-            new_features.append(f)
-    return new_features
-
 def train_model(X, y):
     model = LinearRegression()
     model.fit(X, y)
     return model
 
-def order_and_select_columns(df, features=features):
-    return df.reindex(features, axis=1, fill_value=0)
-
-def split_dataset_Xy(df, y_name, features=features):
-    y = df[y_name]
-    X = order_and_select_columns(df, features)
-    return X,y
-
-def prepare_dataset(df):
-    df = df.select_dtypes(include=[int, float])
-    df = df.div(df['T'], axis=0)
-    return df
-
-def load_dataset(filename):
-    df = pd.read_csv(filename, sep=";")
-    return prepare_dataset(df)
-
-def plot_relative_error(y_true, y_pred):
-    pct = 100.0 * (y_pred - y_true) / y_true
-    print("Relative error: {} ({})".format(np.mean(pct), np.std(pct)))
-    print("\t95th percentile [{:.2f}% - {:.2f}%]".format(np.mean(pct) - 1.96 * np.std(pct), np.mean(pct) + 1.96 * np.std(pct)))
-    if not no_plot and not no_hist:
-        sb.histplot(pct,kde=True)
-
-def K_fold_cross_val(df, K=10, y_param='power/energy-pkg/', features=features):
-    kf = KFold(n_splits=K, shuffle=True)
-    kf.get_n_splits(df)
-
-    train_rmses = []
-    test_rmses = []
-
-    y_pred_test = []
-    y_pred_train = []
-    y_true_test = []
-    y_true_train = []
-
-    for train_index, test_index in kf.split(df):
-        d_train = df.iloc[train_index]
-        d_test = df.iloc[test_index]
-        X_train,y_train = split_dataset_Xy(d_train, y_param, features)
-        X_test,y_test = split_dataset_Xy(d_test, y_param, features)
-        model = LinearRegression()
-        model.fit(X_train, y_train)
-        y_pred = relu(model.predict(X_train))
-        train_rmses.append(np.sqrt(mean_squared_error(y_train, y_pred)))
-
-        y_pred_train.append(y_pred)
-        y_true_train.append(y_train)
-
-        y_pred = relu(model.predict(X_test))
-        test_rmses.append(np.sqrt(mean_squared_error(y_test, y_pred)))
-
-        y_pred_test.append(y_pred)
-        y_true_test.append(y_test)
-
-    print("RMSE train {} ({})".format(np.mean(train_rmses), np.std(train_rmses)))
-    print("RMSE test {} ({})".format(np.mean(test_rmses), np.std(test_rmses)))
-
-    y_pred_train = np.concatenate(y_pred_train)
-    y_true_train = np.concatenate(y_true_train)
-    y_pred_test = np.concatenate(y_pred_test)
-    y_true_test = np.concatenate(y_true_test)
-
-    if not no_plot and not no_plot_train:
-        sm.qqplot_2samples(y_true_test, y_pred_test, xlabel="True value", ylabel="Predicted value")
-        plt.title("QQ-plot 2 samples of validation dataset")
-        plt.legend()
-        plt.show()
-
-        plt.scatter(y_true_train, y_pred_train, label="Training")
-        plt.scatter(y_true_test, y_pred_test, label="Validation")
-        plt.xlabel("True value")
-        plt.ylabel("Predicted value")
-        plt.title("Plot of predicted value against the true value")
-        plt.legend()
-        plt.show()
-
-        plt.scatter(y_true_train, y_pred_train - y_true_train, label="Training")
-        plt.scatter(y_true_test, y_pred_test - y_true_test, label="Validation")
-        plt.xlabel("True value")
-        plt.ylabel("Error of predicted value")
-        plt.title("Error of prediction against true value")
-        plt.legend()
-        plt.show()
-
-        plot_relative_error(y_true_test, y_pred_test)
-        plt.title("Histogram of relative errors")
-        plt.xlabel("Relative error (%)")
-        plt.show()
-
 def plot_density(df, param, name):
     sb.displot(data=df, x=param, kde=True)
     plt.title("Distribution of {} in {}".format(param, name))
+
+def print_features(ft):
+    print(*ft, sep=",")
 
 def run(args):
     y_param = args.y
@@ -536,11 +441,17 @@ def run(args):
     print("{} selected features".format(len(new_features)))
 
     print("CROSS VALIDATION")
-    K_fold_cross_val(df, 10, y_param, new_features)
+    K_fold_cross_val(df, new_features, y_param, 10, (not no_plot) and (not no_plot_train))
+
+    selector = SelectKBest(mutual_info_regression, 'all' if args.select == 0 else args.select)
 
     X_train,y_train = split_dataset_Xy(df, y_param, new_features)
+    selector.fit(X_train, y_train)
+    X_train = selector.transform(X_train)
+    if args.features:
+        print_features(X_train.columns)
     model = train_model(X_train, y_train)
-    y_pred_train = relu(model.predict(X_train))
+    y_pred_train = model.predict(X_train)
 
     if args.validation:
         print("\n\nTEST")
@@ -552,7 +463,8 @@ def run(args):
             plot_density(df_test, y_param, "the validation dataset")
             plt.show()
         X_test,y_test = split_dataset_Xy(df_test, y_param, new_features)
-        y_pred_test = relu(model.predict(X_test))
+        X_test = selector.transform(X_test)
+        y_pred_test = model.predict(X_test)
 
         print("RMSE train {}".format(np.sqrt(mean_squared_error(y_train, y_pred_train))))
         print("RMSE test {}".format(np.sqrt(mean_squared_error(y_test, y_pred_test))))
@@ -565,7 +477,7 @@ def run(args):
             plt.title("Plot of predicted value against the true value")
             plt.show()
 
-            plot_relative_error(y_test, y_pred_test)
+            plot_relative_error(y_test, y_pred_test, not no_plot and not no_hist)
             plt.title("Histogram of relative errors")
             plt.xlabel("Relative error (%)")
             plt.show()
@@ -577,6 +489,7 @@ def run(args):
         print("Prediction dataset {} x {}".format(df_pred.shape[0], df_pred.shape[1]))
 
         X_pred = order_and_select_columns(df_pred, new_features)
+        X_pred = selector.transform(X_pred)
         print("const {}".format(model.intercept_))
         if args.remove_const:
             model.intercept_ = 0.0
@@ -609,6 +522,8 @@ if __name__ == "__main__":
     parser.add_argument('--no-plot-train', action='store_true')
     parser.add_argument('--no-plot-valid', action='store_true')
     parser.add_argument('--features-prune', type=float, default=0.30)
+    parser.add_argument('-s','--select', type=int, default=0)
+    parser.add_argument('--features', action='store_true')
     args = parser.parse_args()
 
     if not args.train:
