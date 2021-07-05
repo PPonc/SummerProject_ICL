@@ -423,8 +423,11 @@ def plot_density(df, param, name):
     sb.displot(data=df, x=param, kde=True)
     plt.title("Distribution of {} in {}".format(param, name))
 
-def print_features(ft):
-    print(*ft, sep=",")
+def print_features(selector, ft):
+    crit = selector.get_support()
+    for i,f in enumerate(ft):
+        if crit[i]:
+            print("{},".format(f))
 
 def run(args):
     y_param = args.y
@@ -440,16 +443,17 @@ def run(args):
     new_features = prune_non_significant_features(features, df, args.features_prune)
     print("{} selected features".format(len(new_features)))
 
-    print("CROSS VALIDATION")
-    K_fold_cross_val(df, new_features, y_param, 10, (not no_plot) and (not no_plot_train))
-
     selector = SelectKBest(mutual_info_regression, 'all' if args.select == 0 else args.select)
 
     X_train,y_train = split_dataset_Xy(df, y_param, new_features)
     selector.fit(X_train, y_train)
     X_train = selector.transform(X_train)
     if args.features:
-        print_features(X_train.columns)
+        print_features(selector, new_features)
+
+    print("CROSS VALIDATION")
+    K_fold_cross_val(df, new_features, y_param, selector, 10, (not no_plot) and (not no_plot_train))
+
     model = train_model(X_train, y_train)
     y_pred_train = model.predict(X_train)
 
@@ -502,7 +506,7 @@ def run(args):
 
         if not no_plot:
             if y_param in new_df.columns:
-                print("Prediction correlation {}".format(np.corrcoef(new_df[y_param], new_df[new_y])[0,1]))
+                print("Prediction correlation {:.2f}".format(100.0 * np.corrcoef(new_df[y_param], new_df[new_y])[0,1]))
                 plt.step(range(new_df.shape[0]), new_df[y_param], where='mid', label = y_param)
             plt.step(range(new_df.shape[0]), new_df[new_y], where='mid', label = new_y)
             plt.title("Prediction")

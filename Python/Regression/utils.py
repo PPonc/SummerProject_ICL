@@ -35,6 +35,6 @@ def load_dataset(filename):
 def plot_relative_error(y_true, y_pred, plot=True):
     pct = 100.0 * (y_pred - y_true) / y_true
     print("Relative error: {} ({})".format(np.mean(pct), np.std(pct)))
-    print("\t95th percentile [{:.2f}% - {:.2f}%]".format(np.mean(pct) - 1.96 * np.std(pct), np.mean(pct) + 1.96 * np.std(pct)))
+    print("\t95th percentile [{:.2f}%; {:.2f}%]".format(np.mean(pct) - 1.96 * np.std(pct), np.mean(pct) + 1.96 * np.std(pct)))
     if plot:
         sb.histplot(pct,kde=True)
