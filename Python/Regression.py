@@ -413,6 +413,15 @@ no_plot_valid = False
 def relu(X):
     return X#np.maximum(0, X)
 
+def prune_non_significant_features(features, df, t):
+    N_t = t * df.shape[0]
+    new_features = []
+    for f in features:
+        N = (df[f] > 0).sum()
+        if N >= N_t:
+            new_features.append(f)
+    return new_features
+
 def train_model(X, y):
     model = LinearRegression()
     model.fit(X, y)
@@ -421,9 +430,9 @@ def train_model(X, y):
 def order_and_select_columns(df, features=features):
     return df.reindex(features, axis=1, fill_value=0)
 
-def split_dataset_Xy(df, y_name):
+def split_dataset_Xy(df, y_name, features=features):
     y = df[y_name]
-    X = order_and_select_columns(df)
+    X = order_and_select_columns(df, features)
     return X,y
 
 def prepare_dataset(df):
@@ -442,7 +451,7 @@ def plot_relative_error(y_true, y_pred):
     if not no_plot and not no_hist:
         sb.histplot(pct,kde=True)
 
-def K_fold_cross_val(df, K=10, y_param='power/energy-pkg/'):
+def K_fold_cross_val(df, K=10, y_param='power/energy-pkg/', features=features):
     kf = KFold(n_splits=K, shuffle=True)
     kf.get_n_splits(df)
 
@@ -457,8 +466,8 @@ def K_fold_cross_val(df, K=10, y_param='power/energy-pkg/'):
     for train_index, test_index in kf.split(df):
         d_train = df.iloc[train_index]
         d_test = df.iloc[test_index]
-        X_train,y_train = split_dataset_Xy(d_train, y_param)
-        X_test,y_test = split_dataset_Xy(d_test, y_param)
+        X_train,y_train = split_dataset_Xy(d_train, y_param, features)
+        X_test,y_test = split_dataset_Xy(d_test, y_param, features)
         model = LinearRegression()
         model.fit(X_train, y_train)
         y_pred = relu(model.predict(X_train))
@@ -523,11 +532,13 @@ def run(args):
         plt.show()
 
     print("Training dataset {} x {}".format(df.shape[0], df.shape[1]))
+    new_features = prune_non_significant_features(features, df, args.features_prune)
+    print("{} selected features".format(len(new_features)))
 
     print("CROSS VALIDATION")
-    K_fold_cross_val(df, 10, y_param)
+    K_fold_cross_val(df, 10, y_param, new_features)
 
-    X_train,y_train = split_dataset_Xy(df, y_param)
+    X_train,y_train = split_dataset_Xy(df, y_param, new_features)
     model = train_model(X_train, y_train)
     y_pred_train = relu(model.predict(X_train))
 
@@ -540,7 +551,7 @@ def run(args):
         if not no_plot and not no_plot_valid:
             plot_density(df_test, y_param, "the validation dataset")
             plt.show()
-        X_test,y_test = split_dataset_Xy(df_test, y_param)
+        X_test,y_test = split_dataset_Xy(df_test, y_param, new_features)
         y_pred_test = relu(model.predict(X_test))
 
         print("RMSE train {}".format(np.sqrt(mean_squared_error(y_train, y_pred_train))))
@@ -565,7 +576,7 @@ def run(args):
         df_pred = prepare_dataset(df)
         print("Prediction dataset {} x {}".format(df_pred.shape[0], df_pred.shape[1]))
 
-        X_pred = order_and_select_columns(df_pred)
+        X_pred = order_and_select_columns(df_pred, new_features)
         print("const {}".format(model.intercept_))
         if args.remove_const:
             model.intercept_ = 0.0
@@ -597,6 +608,7 @@ if __name__ == "__main__":
     parser.add_argument('--remove-const', action='store_true')
     parser.add_argument('--no-plot-train', action='store_true')
     parser.add_argument('--no-plot-valid', action='store_true')
+    parser.add_argument('--features-prune', type=float, default=0.30)
     args = parser.parse_args()
 
     if not args.train:
