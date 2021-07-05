@@ -9,3 +9,7 @@ Python/__pycache__/
 *.script
 
 Python/data/general_210629_1621.script.out
+
+.vscode/
+
+Python/data/
