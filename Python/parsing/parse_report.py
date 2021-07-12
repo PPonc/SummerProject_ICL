@@ -462,13 +462,16 @@ def create_dataframe(samples):
 
     return pd.DataFrame(values)
 
-def read_csv(filename):
+def read_csv(filename, cpu_=True):
     file = open(filename)
 
     samples = []
     while(line := file.readline()):
             line = line.replace('\n', '')
-            res = find(line)
+            if cpu_:
+                res = find_cpu(line)
+            else:
+                res = find(line)
             if res:
                 pg_name = res[0]
                 pid = int(res[1])
@@ -483,7 +486,7 @@ def read_csv(filename):
                     'cpu': cpu,
                     'event': ev_name,
                     'time': ev_time,
-                    'count': e_count
+                    'period': e_count
                 })
 
     return samples
@@ -494,12 +497,18 @@ def retime_samples(samples):
         samples[i]['time'] -= base_time
     return samples
 
-
-def find(line):
-    regex = r"^([a-zA-Z0-9.-_]+)\s+([0-9]+)\s+\[([0-9]+)\]\s([0-9]+\.[0-9]+):\s+([0-9]+)\s+([a-zA-Z0-9_\-\.]+):"
+def find_cpu(line):
+    regex = r"^\s*([a-zA-Z0-9.-_]+)\s+([0-9]+)\s+\[([0-9]+)\]\s([0-9]+\.[0-9]+):\s+([0-9]+)\s+([a-zA-Z0-9_\-\.]+):"
     matches = re.finditer(regex, line, re.MULTILINE)
     for matchNum, match in enumerate(matches, start=1):
         return (match.group(1), match.group(2), match.group(3), match.group(4), match.group(5), match.group(6))
+    return None
+
+def find(line):
+    regex = r"^\s*([a-zA-Z0-9.-_]+)\s+([0-9]+)\s+([0-9]+\.[0-9]+):\s+([0-9]+)\s+([a-zA-Z0-9_\-\.]+):"
+    matches = re.finditer(regex, line, re.MULTILINE)
+    for matchNum, match in enumerate(matches, start=1):
+        return (match.group(1), match.group(2), 0, match.group(3), match.group(4), match.group(5))
     return None
 
 def run(filename, sep, o_filename):
