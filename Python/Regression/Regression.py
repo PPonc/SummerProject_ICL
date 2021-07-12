@@ -427,7 +427,7 @@ def print_features(selector, ft):
     crit = selector.get_support()
     for i,f in enumerate(ft):
         if crit[i]:
-            print("{},".format(f))
+            print("{}".format(f), end=",")
 
 def run(args):
     y_param = args.y
