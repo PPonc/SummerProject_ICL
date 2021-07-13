@@ -428,6 +428,7 @@ def print_features(selector, ft):
     for i,f in enumerate(ft):
         if crit[i]:
             print("{}".format(f), end=",")
+    print("")
 
 def run(args):
     y_param = args.y
@@ -443,7 +444,8 @@ def run(args):
     new_features = prune_non_significant_features(features, df, args.features_prune)
     print("{} selected features".format(len(new_features)))
 
-    selector = SelectKBest(mutual_info_regression, 'all' if args.select == 0 else args.select)
+    selector = SelectKBest(mutual_info_regression if args.mutual_info else f_regression,
+                            'all' if args.select == 0 else args.select)
 
     X_train,y_train = split_dataset_Xy(df, y_param, new_features)
     selector.fit(X_train, y_train)
@@ -528,6 +530,7 @@ if __name__ == "__main__":
     parser.add_argument('--features-prune', type=float, default=0.30)
     parser.add_argument('-s','--select', type=int, default=0)
     parser.add_argument('--features', action='store_true')
+    parser.add_argument('--mutual-info', action='store_true')
     args = parser.parse_args()
 
     if not args.train:
