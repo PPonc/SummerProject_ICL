@@ -435,7 +435,7 @@ def fill_line(values, times, pg_name, ev_name, ev_time, ev_count, cpu):
 def fill_line_sample(values, times, sample):
     if sample['event'] in features:
         add_line(values, sample['time'], sample['program'])
-        values[sample['event']][-1] = sample['count']
+        values[sample['event']][-1] = sample['period']
         if sample['time'] != times[sample['event']][sample['cpu']][1]:
             values['T'][-1] = sample['time'] - times[sample['event']][sample['cpu']][1]
             times[sample['event']][sample['cpu']][0] = times[sample['event']][sample['cpu']][1]
