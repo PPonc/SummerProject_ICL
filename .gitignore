@@ -17,3 +17,5 @@ Python/data/
 Python/Regression/__pycache__/
 
 Python/parsing/__pycache__/
+
+*.svg
