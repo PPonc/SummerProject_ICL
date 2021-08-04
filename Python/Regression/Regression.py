@@ -445,9 +445,10 @@ def run(args):
     print("{} selected features".format(len(new_features)))
 
     selector = SelectKBest(mutual_info_regression if args.mutual_info else f_regression,
-                            'all' if args.select == 0 else args.select)
+                            k=('all' if args.select == 0 else args.select))
 
     X_train,y_train = split_dataset_Xy(df, y_param, new_features)
+    y_offset = np.min(y_train)
     selector.fit(X_train, y_train)
     X_train = selector.transform(X_train)
     if args.features:
@@ -498,6 +499,7 @@ def run(args):
         X_pred = selector.transform(X_pred)
         print("const {}".format(model.intercept_))
         if args.remove_const:
+            const_correct = model.intercept_
             model.intercept_ = 0.0
         y_pred = model.predict(X_pred)
         new_df = df
