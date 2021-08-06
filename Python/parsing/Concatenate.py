@@ -7,7 +7,7 @@ import threading
 import queue
 from multiprocessing import Process
 
-from math import ceil
+from math import ceil,floor
 
 class Point1d:
     def __init__(self, start, end):
@@ -87,6 +87,21 @@ def create_workers(N, new_df, old_df, times, width, workers_nb = 8):
         if workers[i]:
             workers[i].join()
 
+def find_samples(times, N, width):
+    samples_idx = []
+    for i in range(N):
+        samples_idx.append([])
+
+    for k in range(0, len(times)):
+        t = times.loc[k, 'time']
+        T = times.loc[k, 'T']
+        start = min(N - 1, int(floor(t / width)))
+        finish = min(N - 1, int(floor((t+T) / width)))
+        for i in range(start, finish + 1):
+            samples_idx[i].append(k)
+    return samples_idx
+
+
 def concatenate(df, width):
     df = df.sort_values(["time", "T"], ascending=(True, True))
     print(df)
@@ -99,29 +114,19 @@ def concatenate(df, width):
     N = int(ceil(N / width))
 
     new_df = pd.DataFrame(columns = df.columns, index = range(N)).fillna(0)
+    samples_idx = find_samples(times, N, width)
+    print("Samples computed")
 
-    start_idx = 0
     for i in range(N):
-        working = True
-        for k in range(start_idx, len(df)):
+        print(f"concatenate {i + 1}/{N}, samples = {len(samples_idx[i])}", end='\r')
+        for k in samples_idx[i]:
             t = times.loc[k, 'time']
             T = times.loc[k, 'T']
             if collision(width * i, width * (i + 1), t, t + T):
-                if working and t + T < width * (i + 1):
-                    start_idx = k + 1
-                else:
-                    working = False
                 coverage = collision_b_over_a(width * i, width * (i + 1), t, t + T)
                 new_df.iloc[i, :] += coverage * df.iloc[k,:]
-            elif is_b_after_a(width * i, width * (i + 1), t, t + T):
-                break
-            elif working:
-                start_idx = k
-
         new_df.loc[i, 'time'] = width * i
         new_df.loc[i, 'T'] = width
-        print(f"concatenate {i + 1}/{N} [start = {start_idx}, end = {k}]", end='\r')
-    # create_workers(N, new_df, df, times, width, 8)
     return new_df
 
 if __name__ == "__main__":
