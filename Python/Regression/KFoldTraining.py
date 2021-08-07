@@ -9,7 +9,7 @@ import statsmodels.api as sm
 from utils import *
 
 
-def K_fold_cross_val(df, features, y_param, selector, K=10, plot=True, hist=True):
+def K_fold_cross_val(df, features, y_param, selector, K=10, plot=True, hist=True, positive = False):
     kf = KFold(n_splits=K, shuffle=True)
     kf.get_n_splits(df)
 
@@ -28,7 +28,7 @@ def K_fold_cross_val(df, features, y_param, selector, K=10, plot=True, hist=True
         X_train = selector.transform(X_train)
         X_test,y_test = split_dataset_Xy(d_test, y_param, features)
         X_test = selector.transform(X_test)
-        model = LinearRegression()
+        model = LinearRegression(positive = positive)
         model.fit(X_train, y_train)
         y_pred = model.predict(X_train)
         train_rmses.append(np.sqrt(mean_squared_error(y_train, y_pred)))

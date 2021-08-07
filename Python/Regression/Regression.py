@@ -414,8 +414,8 @@ no_hist = False
 no_plot_train = False
 no_plot_valid = False
 
-def train_model(X, y):
-    model = LinearRegression()
+def train_model(X, y, positive = False):
+    model = LinearRegression(positive = positive)
     model.fit(X, y)
     return model
 
@@ -455,9 +455,9 @@ def run(args):
         print_features(selector, new_features)
 
     print("CROSS VALIDATION")
-    K_fold_cross_val(df, new_features, y_param, selector, 10, (not no_plot) and (not no_plot_train))
+    K_fold_cross_val(df, new_features, y_param, selector, 10, (not no_plot) and (not no_plot_train), positive = args.positive)
 
-    model = train_model(X_train, y_train)
+    model = train_model(X_train, y_train, args.positive)
     y_pred_train = model.predict(X_train)
 
     if args.validation:
@@ -506,7 +506,10 @@ def run(args):
         new_y = "{}-pred".format(y_param)
         new_df[new_y] = y_pred.tolist()
         new_df[new_y] = new_df[new_y] * new_df['T']
-        new_df.to_csv("{}.pred".format(args.predict), index=False, sep=";")
+        if args.output:
+            new_df.to_csv("{}".format(args.output), index=False, sep=";")
+        else:
+            new_df.to_csv("{}.pred".format(args.predict), index=False, sep=";")
 
         if not no_plot:
             if y_param in new_df.columns:
@@ -533,6 +536,8 @@ if __name__ == "__main__":
     parser.add_argument('-s','--select', type=int, default=0)
     parser.add_argument('--features', action='store_true')
     parser.add_argument('--mutual-info', action='store_true')
+    parser.add_argument('--positive', action='store_true')
+    parser.add_argument('-o', '--output', default=None, type=str)
     args = parser.parse_args()
 
     if not args.train:
