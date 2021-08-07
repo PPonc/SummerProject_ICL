@@ -451,7 +451,9 @@ def run(args):
     model = train_model(training_df, new_features, 'power/energy-pkg/', positive = args.positive)
     training_df = None
 
-    df = df.drop('program', axis=1)
+    print(df)
+
+    df = df.drop(['program', 'pid'], axis=1)
     df = df.div(df['T'], axis = 0)
     X = df.reindex(new_features, axis=1, fill_value=0)
 
