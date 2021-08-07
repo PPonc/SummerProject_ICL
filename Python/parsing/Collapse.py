@@ -420,7 +420,7 @@ def samples_to_stackcollapse(samples, const = 0.0):
 def print_lines(lines):
     s_lines = sorted(lines.keys())
     for k in s_lines:
-        print(f"{k} {lines[k]}")
+        print(f"{k} {lines[k]:20f}")
 
 def select_features(base_features, setA, setB):
     new_f = []
@@ -435,11 +435,11 @@ def split_dataset_Xy(df, y_name, features):
     X = X.reindex(features, axis=1, fill_value=0)
     return X,y
 
-def train_model(df, features, y):
+def train_model(df, features, y, positive = False):
     X,y = split_dataset_Xy(df, y, features)
-    model = LinearRegression()
+    model = LinearRegression(positive = positive)
     model = model.fit(X,y)
-    # model.intercept_ = 0
+    model.intercept_ = 0
     return model
 
 def run(args):
@@ -448,7 +448,7 @@ def run(args):
 
     training_df = pd.read_csv(args.training, sep=args.sep)
     new_features = select_features(features, conv.features(), training_df.columns)
-    model = train_model(training_df, new_features, 'power/energy-pkg/')
+    model = train_model(training_df, new_features, 'power/energy-pkg/', positive = args.positive)
     training_df = None
 
     df = df.drop('program', axis=1)
@@ -476,6 +476,7 @@ if __name__ == "__main__":
     parser.add_argument('-y', type=str, default='power/energy-pkg/')
     parser.add_argument('--no-cpu', action='store_true')
     parser.add_argument('--add-const', type=float, default=0.0)
+    parser.add_argument('--positive', action='store_true')
     args = parser.parse_args()
 
     run(args)

@@ -29,16 +29,18 @@ class ScriptConverter:
         self.data['time'] = []
         self.data['T'] = []
         self.data['program'] = []
+        self.data['pid'] = []
 
-    def add_line(self, time, T, prog):
+    def add_line(self, time, T, prog, pid):
         for f in self.features():
             self.data[f].append(0)
         self.data['time'].append(time)
         self.data['T'].append(T)
         self.data['program'].append(prog)
+        self.data['pid'].append(pid)
 
     def add_sample(self, sample):
-        self.add_line(sample['time'], sample['T'], sample['program'])
+        self.add_line(sample['time'], sample['T'], sample['program'], sample['pid'])
         self.data[sample['event']][-1] = sample['period']
 
     def to_dataframe(self):
