@@ -96,6 +96,7 @@ def concatenate_filtered(df, times, width, filter):
     samples, N = find_samples_filtered(times, width, filter)
     new_df = pd.DataFrame(columns = df.columns, index = range(N)).fillna(0)
     print("Sample indices precomputed")
+    filter_idx = df.columns.get_loc(filter)
     idx = 0
     for k_idx,k in enumerate(samples.keys()):
         N_k = len(samples[k])
@@ -106,7 +107,8 @@ def concatenate_filtered(df, times, width, filter):
                 T = times.loc[j, 'T']
                 if collision(width * i, width * (i + 1), t, t + T):
                     coverage = collision_b_over_a(width * i, width * (i + 1), t, t + T)
-                    new_df.iloc[idx, :] += coverage * df.iloc[j,:]
+                    new_df.iloc[idx, :filter_idx] += coverage * df.iloc[j,:filter_idx]
+                    new_df.iloc[idx, filter_idx+1:] += coverage * df.iloc[j,filter_idx+1:]
             new_df.loc[idx, 'time'] = width * i
             new_df.loc[idx, 'T'] = width
             new_df.loc[idx, filter] = k
@@ -130,7 +132,7 @@ def run_concatenation(df, width, filter = None):
     elif filter == "program":
         df = df.drop(['pid'], axis = 1)
     elif filter == "pid":
-        pass
+        df = df.drop(['program'], axis = 1)
     else:
         raise RuntimeError(f"filter {filter} unknown.")
 
