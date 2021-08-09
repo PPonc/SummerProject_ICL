@@ -42,8 +42,8 @@ def find_samples_unfiltered(times, width):
     for k in range(len(times)):
         t = times.loc[k, 'time']
         T = times.loc[k, 'T']
-        start = min(N - 1, int(floor(t / width)))
-        finish = min(N - 1, int(floor((t+T) / width)))
+        start = int(floor(t / width))
+        finish = int(floor((t+T) / width))
         if finish >= len(samples):
             while len(samples) < finish + 1:
                 samples.append([])
@@ -76,8 +76,8 @@ def find_samples_filtered(times, width, filter):
         t = times.loc[k, 'time']
         T = times.loc[k, 'T']
         f = times.loc[k, filter]
-        start = min(N - 1, int(floor(t / width)))
-        finish = min(N - 1, int(floor((t+T) / width)))
+        start = int(floor(t / width))
+        finish = int(floor((t+T) / width))
         if f not in samples.keys():
             samples[f] = []
         if finish >= len(samples[f]):

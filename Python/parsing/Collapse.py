@@ -482,7 +482,6 @@ if __name__ == "__main__":
     parser.add_argument('--add-const', type=float, default=0.0)
     parser.add_argument('--positive', action='store_true')
     parser.add_argument('--pid', action='store_true')
-    parser.add_argument('--include')
     args = parser.parse_args()
 
     run(args)
