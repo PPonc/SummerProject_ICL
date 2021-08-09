@@ -93,7 +93,7 @@ def find_samples_filtered(times, width, filter):
     return samples, N
 
 def concatenate_filtered(df, times, width, filter):
-    samples, N, find_samples_filtered(times, width, filter)
+    samples, N = find_samples_filtered(times, width, filter)
     new_df = pd.DataFrame(columns = df.columns, index = range(N)).fillna(0)
     print("Sample indices precomputed")
     idx = 0
