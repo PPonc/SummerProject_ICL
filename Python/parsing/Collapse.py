@@ -399,17 +399,20 @@ features = [
     'tlb_flush.stlb_any'
 ]
 
-def sample_to_line(sample):
-    line = sample['program']
+def sample_to_line(sample, use_pid):
+    if not use_pid:
+        line = sample['program']
+    else:
+        line = f"{sample['program']} [{sample['pid']}]"
     for i in range(len(sample['sources'])-1, -1, -1):
         line = f"{line};{sample['sources'][i]['name']}"
     return line
 
-def samples_to_stackcollapse(samples, const = 0.0):
+def samples_to_stackcollapse(samples, const = 0.0, use_pid = False):
     lines = dict()
 
     for s in samples:
-        key = sample_to_line(s)
+        key = sample_to_line(s, use_pid)
         if not key in lines.keys():
             lines[key] = s['power'] * s['T'] + 0.0
         else:
@@ -417,10 +420,11 @@ def samples_to_stackcollapse(samples, const = 0.0):
 
     return lines
 
-def print_lines(lines):
+def print_lines(lines, positive):
     s_lines = sorted(lines.keys())
     for k in s_lines:
-        print(f"{k} {lines[k]:20f}")
+        if not positive or lines[k] > 0:
+            print(f"{k} {lines[k]:20f}")
 
 def select_features(base_features, setA, setB):
     new_f = []
@@ -463,8 +467,8 @@ def run(args):
 
     y_pred = None
 
-    lines = samples_to_stackcollapse(samples)
-    print_lines(lines)
+    lines = samples_to_stackcollapse(samples, 0.0, args.pid)
+    print_lines(lines, args.positive)
 
 
 if __name__ == "__main__":
@@ -477,6 +481,8 @@ if __name__ == "__main__":
     parser.add_argument('--no-cpu', action='store_true')
     parser.add_argument('--add-const', type=float, default=0.0)
     parser.add_argument('--positive', action='store_true')
+    parser.add_argument('--pid', action='store_true')
+    parser.add_argument('--include')
     args = parser.parse_args()
 
     run(args)

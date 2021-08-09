@@ -12,8 +12,9 @@ class ScriptParser:
 
         self.regex = {
             'source': r"^\s*([a-f0-9]+)\s+(.+)\+(0x[a-f0-9]+)\s+\((.+)\)",
-            'sample': r"^\s*([a-zA-Z0-9.-_]+)\s+([0-9]+)\s+([0-9]+\.[0-9]+):\s+([0-9]+)\s+([a-zA-Z0-9_\-\.]+):",
-            'sample_cpu': r"^\s*([a-zA-Z0-9.-_]+)\s+([0-9]+)\s+\[([0-9]+)\]\s([0-9]+\.[0-9]+):\s+([0-9]+)\s+([a-zA-Z0-9_\-\.]+):"
+            'source_unknown': r"^\s*([a-f0-9]+)\s+\[unknown\]\s+\((.+)\)",
+            'sample': r"^\s*([a-zA-Z0-9.\-\_]+)\s+([0-9]+)\s+([0-9]+\.[0-9]+):\s+([0-9]+)\s+([a-zA-Z0-9_\-\.]+):",
+            'sample_cpu': r"^\s*([a-zA-Z0-9.\-\_]+)\s+([0-9]+)\s+\[([0-9]+)\]\s([0-9]+\.[0-9]+):\s+([0-9]+)\s+([a-zA-Z0-9_\-\.]+):"
         }
 
     def parse_source(self, line):
@@ -24,6 +25,13 @@ class ScriptParser:
                 'name': match.group(2),
                 'offset': match.group(3),
                 'origin': match.group(4)
+            }
+        elif (match := re.search(self.regex['source_unknown'], line)):
+            return {
+                'address': match.group(1),
+                'name': '[unknown]',
+                'offset': 0,
+                'origin': match.group(2)
             }
         return None
 
