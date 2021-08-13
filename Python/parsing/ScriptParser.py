@@ -14,7 +14,7 @@ class ScriptParser:
             'source': r"^\s*([a-f0-9]+)\s+(.+)\+(0x[a-f0-9]+)\s+\((.+)\)",
             'source_unknown': r"^\s*([a-f0-9]+)\s+\[unknown\]\s+\((.+)\)",
             'sample': r"^\s*([a-zA-Z0-9.\-\_]+)\s+([0-9]+)\s+([0-9]+\.[0-9]+):\s+([0-9]+)\s+([a-zA-Z0-9_\-\.]+):",
-            'sample_cpu': r"^\s*([a-zA-Z0-9.\-\_]+)\s+([0-9]+)\s+\[([0-9]+)\]\s([0-9]+\.[0-9]+):\s+([0-9]+)\s+([a-zA-Z0-9_\-\.]+):"
+            'sample_cpu': r"^\s*([a-zA-Z0-9.\-\_]+)\s+([0-9]+)\s+\[([0-9]+)\]\s+([0-9]+\.[0-9]+):\s+([0-9]+)\s+([a-zA-Z0-9_\-\.]+):"
         }
 
     def parse_source(self, line):
@@ -91,10 +91,11 @@ class ScriptParser:
 
     def parse(self):
         file = open(self.filename)
-
+        count = 0
         while(line := file.readline()):
             line = line.replace('\n', '')
             res = self.parse_line(line)
+            count += 1
             if res:
                 if 'program' in res.keys():
                     self.add_feature(res['event'])
